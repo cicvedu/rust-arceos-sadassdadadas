@@ -1,7 +1,11 @@
+#![allow(dead_code)]
 use alloc::{collections::VecDeque, sync::Arc};
 use core::ops::Deref;
-
+//use std::thread::current;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::BaseScheduler;
+
+static TIMEOUT: AtomicUsize = AtomicUsize::new(100);
 
 /// A task wrapper for the [`SimpleScheduler`].
 pub struct SimpleTask<T> {
@@ -49,6 +53,7 @@ impl<T> SimpleScheduler<T> {
             ready_queue: VecDeque::new(),
         }
     }
+    
     /// get the name of scheduler
     pub fn scheduler_name() -> &'static str {
         "Simple"
@@ -78,11 +83,20 @@ impl<T> BaseScheduler for SimpleScheduler<T> {
     }
 
     fn put_prev_task(&mut self, prev: Self::SchedItem, _preempt: bool) {
-        self.ready_queue.push_back(prev);
+        //self.ready_queue.push_back(prev);
+        let temp = TIMEOUT.load(Ordering::Acquire);
+        if  temp > 0 && _preempt {
+            self.ready_queue.push_front(prev)
+        } else {
+            TIMEOUT.store(100, Ordering::Release);
+            self.ready_queue.push_back(prev)
+        }
     }
 
     fn task_tick(&mut self, _current: &Self::SchedItem) -> bool {
-        false // no reschedule
+        //false // no reschedule
+        let old_slice = TIMEOUT.fetch_sub(1,Ordering::Release);
+        old_slice <= 1
     }
 
     fn set_priority(&mut self, _task: &Self::SchedItem, _prio: isize) -> bool {
