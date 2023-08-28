@@ -1,3 +1,5 @@
+use core::f32::consts::E;
+
 use alloc::collections::BTreeMap;
 use alloc::sync::{Arc, Weak};
 use alloc::{string::String, vec::Vec};
@@ -166,7 +168,17 @@ impl VfsNodeOps for DirNode {
     }
 
     fn rename(&self, _src: &str, _dst: &str) -> VfsResult {
-        todo!("Implement rename for ramfs!");
+        // todo!("Implement rename for ramfs!");
+        let (src_dir, src_name) = split_path(_src);
+        log::debug!("src dir: {}, src_name: {:?}",src_dir, Some(src_name));
+        let (dst_dir, dst_name) = split_path(_dst);
+        log::debug!("dst dir: {}, dst_name: {:?}",dst_dir, Some(dst_name));
+
+        let real_dst_name = dst_name.ok_or(VfsError::InvalidInput)?;
+        let node = self.children.write().remove(src_dir).unwrap();
+        self.children.write().insert(real_dst_name.into(), node);
+
+        Ok(())
     }
 
     axfs_vfs::impl_vfs_dir_default! {}
